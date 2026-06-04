@@ -1,0 +1,26 @@
+ABOUT THE CLINIC
+We are Smile Dental Clinic, located at 123 MG Road, Noida.
+We provide general dentistry, teeth cleaning, root canal treatment,
+braces, and cosmetic dentistry.
+
+TIMINGS
+Monday to Saturday: 10:00 AM to 7:00 PM
+Sunday: Closed
+
+DOCTORS
+Dr. Anita Sharma - General Dentistry, 12 years experience
+Dr. Rahul Verma - Orthodontist (braces), 8 years experience
+
+SERVICES AND PRICES
+Consultation: 500 rupees
+Teeth Cleaning: 1500 rupees
+Root Canal: starts at 4000 rupees
+Braces: starts at 25000 rupees
+
+APPOINTMENTS
+Appointments can be booked from 10 AM to 7 PM, Monday to Saturday.
+Each appointment slot is 30 minutes.
+
+CONTACT
+Phone: 9193913980
+Email: smiledental@example.com
