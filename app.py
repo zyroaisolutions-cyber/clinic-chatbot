@@ -1,7 +1,6 @@
 """
-app.py — PATIENT PAGE (professionally styled)
-Run with:  streamlit run app.py
-All booking/view/cancel/RAG logic is the same — only the look is upgraded.
+app.py — PATIENT PAGE (Gemini embeddings, deploy-ready)
+Auto-creates the database tables on startup so it works online and locally.
 """
 import sqlite3
 import datetime
@@ -14,12 +13,30 @@ from step9_availability import get_available_slots, ALL_SLOTS
 # ---------- SETTINGS ----------
 DB_PATH = "appointments.db"
 CHROMA_PATH = "clinic_db"
-API_KEY = st.secrets["GEMINI_KEY"]   # <-- your Gemini key
+API_KEY = st.secrets["GEMINI_KEY"]
 
 CLINIC_NAME = "Smile Dental Clinic"
 CLINIC_TAGLINE = "Healthy smiles, happy faces"
 CLINIC_SERVICES = ["Consultation", "Teeth Cleaning", "Root Canal", "Braces", "Cosmetic Dentistry"]
 
+
+# ---------- DATABASE SETUP (creates tables if missing) ----------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS appointments (
+        ref TEXT, name TEXT, phone TEXT, email TEXT,
+        service TEXT, date TEXT, time TEXT
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS blocked_dates (date TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS blocked_slots (date TEXT, time TEXT)""")
+    conn.commit()
+    conn.close()
+
+init_db()
+
+
+# ---------- LOAD ONCE ----------
 @st.cache_resource
 def load_stuff():
     chroma = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -35,6 +52,7 @@ def embed_text(text):
     return result.embeddings[0].values
 
 
+# ---------- HELPERS ----------
 def match_service(user_text):
     prompt = (
         f"The clinic offers these services: {', '.join(CLINIC_SERVICES)}. "
@@ -122,92 +140,52 @@ def answer_question(question):
 
 
 # ==========================================================
-#                    PAGE CONFIG + STYLING
+#                  PAGE CONFIG + STYLING
 # ==========================================================
-st.set_page_config(page_title=CLINIC_NAME, page_icon="🦷", layout="centered")
+st.set_page_config(page_title=CLINIC_NAME, page_icon="\U0001F9B7", layout="centered")
 
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap');
-:root {
-    --teal-deep: #0f6e6e;
-    --teal: #14a3a3;
-    --mint: #e6f7f5;
-    --ink: #1b3a3a;
-    --soft: #6b8a8a;
-}
-html, body, [class*="css"] { font-family: 'Nunito Sans', sans-serif; }
-.stApp { background: linear-gradient(180deg, #f4fbfa 0%, #ffffff 40%); }
-#MainMenu, footer, header {visibility: hidden;}
-
-.clinic-header {
-    background: linear-gradient(135deg, var(--teal-deep) 0%, var(--teal) 100%);
-    border-radius: 20px; padding: 28px 32px; margin-bottom: 8px;
-    box-shadow: 0 10px 30px rgba(15,110,110,0.18);
-}
-.clinic-header h1 {
-    font-family: 'Fraunces', serif; color: #ffffff; font-size: 30px;
-    margin: 0; font-weight: 600; letter-spacing: -0.5px;
-}
-.clinic-header p { color: #d4f0ee; margin: 6px 0 0 0; font-size: 15px; }
-.clinic-badge {
-    display: inline-block; background: rgba(255,255,255,0.18); color: #fff;
-    padding: 4px 12px; border-radius: 999px; font-size: 12px;
-    font-weight: 600; margin-top: 12px;
-}
-
-/* Chat bubbles - readable text */
-.stChatMessage {
-    border-radius: 16px !important;
-    padding: 12px 16px !important;
-    background: #ffffff !important;
-    border: 1px solid #d4ede9 !important;
-    margin-bottom: 10px !important;
-    box-shadow: 0 2px 8px rgba(15,110,110,0.06) !important;
-}
-.stChatMessage p, .stChatMessage div, .stChatMessage span, .stChatMessage li {
-    color: #1b3a3a !important;
-    opacity: 1 !important;
-}
-
-.stChatInput textarea { border-radius: 14px !important; }
-section[data-testid="stSidebar"] { background: var(--mint); }
-.side-card {
-    background: #ffffff; border-radius: 14px; padding: 16px 18px;
-    margin-bottom: 14px; box-shadow: 0 4px 14px rgba(15,110,110,0.08);
-}
-.side-card h3 {
-    font-family: 'Fraunces', serif; color: var(--teal-deep);
-    font-size: 16px; margin: 0 0 10px 0;
-}
-.side-card p { color: var(--ink); font-size: 14px; margin: 5px 0; line-height: 1.5; }
-.side-card .label { color: var(--soft); font-size: 12px; }
+:root { --teal-deep:#0f6e6e; --teal:#14a3a3; --mint:#e6f7f5; --ink:#1b3a3a; --soft:#6b8a8a; }
+html, body, [class*="css"] { font-family:'Nunito Sans',sans-serif; }
+.stApp { background: linear-gradient(180deg,#f4fbfa 0%,#ffffff 40%); }
+#MainMenu, footer, header {visibility:hidden;}
+.clinic-header { background:linear-gradient(135deg,var(--teal-deep) 0%,var(--teal) 100%);
+  border-radius:20px; padding:28px 32px; margin-bottom:8px; box-shadow:0 10px 30px rgba(15,110,110,0.18); }
+.clinic-header h1 { font-family:'Fraunces',serif; color:#fff; font-size:30px; margin:0; font-weight:600; letter-spacing:-0.5px; }
+.clinic-header p { color:#d4f0ee; margin:6px 0 0 0; font-size:15px; }
+.clinic-badge { display:inline-block; background:rgba(255,255,255,0.18); color:#fff;
+  padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600; margin-top:12px; }
+.stChatMessage { border-radius:16px !important; padding:12px 16px !important; background:#ffffff !important;
+  border:1px solid #d4ede9 !important; margin-bottom:10px !important; box-shadow:0 2px 8px rgba(15,110,110,0.06) !important; }
+.stChatMessage p, .stChatMessage div, .stChatMessage span, .stChatMessage li { color:#1b3a3a !important; opacity:1 !important; }
+.stChatInput textarea { border-radius:14px !important; }
+section[data-testid="stSidebar"] { background:var(--mint); }
+.side-card { background:#fff; border-radius:14px; padding:16px 18px; margin-bottom:14px; box-shadow:0 4px 14px rgba(15,110,110,0.08); }
+.side-card h3 { font-family:'Fraunces',serif; color:var(--teal-deep); font-size:16px; margin:0 0 10px 0; }
+.side-card p { color:var(--ink); font-size:14px; margin:5px 0; line-height:1.5; }
+.side-card .label { color:var(--soft); font-size:12px; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown(f"""
 <div class="clinic-header">
-    <h1>🦷 {CLINIC_NAME}</h1>
+    <h1>\U0001F9B7 {CLINIC_NAME}</h1>
     <p>{CLINIC_TAGLINE}</p>
-    <span class="clinic-badge">● Online - AI Assistant ready</span>
+    <span class="clinic-badge">\u25CF Online - AI Assistant ready</span>
 </div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown(f"""
-    <div class="side-card">
-        <h3>About Us</h3>
-        <p>General dentistry, cleaning, root canal, braces & cosmetic dentistry.</p>
-    </div>
-    <div class="side-card">
-        <h3>Timings</h3>
+    st.markdown("""
+    <div class="side-card"><h3>About Us</h3>
+        <p>General dentistry, cleaning, root canal, braces & cosmetic dentistry.</p></div>
+    <div class="side-card"><h3>Timings</h3>
         <p><span class="label">Mon-Sat</span><br>10:00 AM - 7:00 PM</p>
-        <p><span class="label">Sunday</span><br>Closed</p>
-    </div>
-    <div class="side-card">
-        <h3>Contact</h3>
-        <p>Phone: 9193913980<br>NFC, Delhi<br>amaanuddin1990@gmail.com</p>
-    </div>
+        <p><span class="label">Sunday</span><br>Closed</p></div>
+    <div class="side-card"><h3>Contact</h3>
+        <p>Phone: 9193913980<br>NFC, Delhi<br>amaanuddin1990@gmail.com</p></div>
     """, unsafe_allow_html=True)
     st.caption("Type below to chat, book, view or cancel.")
 
@@ -223,14 +201,14 @@ if not st.session_state.messages:
     })
 
 for m in st.session_state.messages:
-    avatar = "🦷" if m["role"] == "assistant" else "🙂"
+    avatar = "\U0001F9B7" if m["role"] == "assistant" else "\U0001F642"
     with st.chat_message(m["role"], avatar=avatar):
         st.write(m["content"])
 
 
 def bot_say(text):
     st.session_state.messages.append({"role": "assistant", "content": text})
-    with st.chat_message("assistant", avatar="🦷"):
+    with st.chat_message("assistant", avatar="\U0001F9B7"):
         st.write(text)
 
 
@@ -238,7 +216,7 @@ user_input = st.chat_input("Type your message...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="🙂"):
+    with st.chat_message("user", avatar="\U0001F642"):
         st.write(user_input)
 
     f = st.session_state.flow
@@ -301,7 +279,7 @@ if user_input:
                 if past:
                     last = past[-1]
                     bot_say(
-                        f"Welcome back, {last[1]}! 😊 It's lovely to see you again. "
+                        f"Welcome back, {last[1]}! \U0001F60A It's lovely to see you again. "
                         f"Last time you visited us for a **{last[2]}** on **{last[3]}**. "
                         f"I hope you've been keeping well since then! Let's get your new appointment sorted."
                     )
@@ -351,5 +329,7 @@ if user_input:
                     f"Keep your reference (**{ref}**) to view or cancel anytime."
                 )
                 st.session_state.flow = None
+            except (ValueError, IndexError):
+                bot_say("Please reply with a valid number from the list.")
             except (ValueError, IndexError):
                 bot_say("Please reply with a valid number from the list.")
