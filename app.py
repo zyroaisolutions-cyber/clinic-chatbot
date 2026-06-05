@@ -401,4 +401,3 @@ if typed:
     st.session_state.messages.append({"role": "user", "content": typed})
     handle_input(typed)
     st.rerun()
-                bot_say("Please reply with a valid number from the list.")
